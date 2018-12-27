@@ -13,7 +13,7 @@ namespace Dots
         public DotsGrid()
         {
             DoubleBuffered = true;
-            this.dotsGame = new DotsGame(DotsGame.GridSize.Medium);
+            Game = new DotsGame();
 
             InitializeComponent();
         }
@@ -21,7 +21,7 @@ namespace Dots
         public DotsGrid(DotsGame dotsGame)
         {
             DoubleBuffered = true;
-            this.dotsGame = dotsGame;
+            Game = dotsGame;
 
             InitializeComponent();
         }
@@ -30,7 +30,7 @@ namespace Dots
         private static Color[] playersColors = { Color.FromArgb(33, 0, 150), Color.FromArgb(184, 24, 24) };
 
 
-        private DotsGame dotsGame;
+        public DotsGame Game;
 
         private int cellSize = 20;
         private Point nearestPoint = new Point(-1, -1);
@@ -103,8 +103,8 @@ namespace Dots
         {
             base.OnMouseMove(e);
 
-            int closestPointX = ((int)Math.Round((double)e.X / (double)cellSize)).Clamp(1, (int)dotsGame.Size) * cellSize;
-            int closestPointY = ((int)Math.Round((double)e.Y / (double)cellSize)).Clamp(1, (int)dotsGame.Size) * cellSize;
+            int closestPointX = ((int)Math.Round((double)e.X / (double)cellSize)).Clamp(1, Game.Size) * cellSize;
+            int closestPointY = ((int)Math.Round((double)e.Y / (double)cellSize)).Clamp(1, Game.Size) * cellSize;
             Point p = new Point(closestPointX, closestPointY);
             
             if (p != nearestPoint)
@@ -138,8 +138,8 @@ namespace Dots
 
             pevent.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
 
-            int gridLines = (int)dotsGame.Size;
-            int gridSize = ((int)dotsGame.Size + 1) * cellSize;
+            int gridLines = Game.Size;
+            int gridSize = (Game.Size + 1) * cellSize;
 
             for (int i = 0; i < gridLines; i++)
             {
@@ -152,7 +152,7 @@ namespace Dots
                 }
             }
 
-            if (mouseOver && nearestPoint.X >= 0 && NearestCell.X >= 0 && dotsGame.Grid[NearestCell.X, NearestCell.Y].PlayerDot == null)
+            if (mouseOver && nearestPoint.X >= 0 && NearestCell.X >= 0 && Game.Grid[NearestCell.X, NearestCell.Y].PlayerDot == null)
             {
                 using (Pen p = new Pen(selectionColor))
                 {
@@ -164,12 +164,12 @@ namespace Dots
             {
                 for (int j = 0; j < gridLines; j++)
                 {
-                    if (dotsGame.Grid[i, j].PlayerDot == null)
+                    if (Game.Grid[i, j].PlayerDot == null)
                         continue;
 
                     Point dotLocation = new Point((i + 1) * cellSize, (j + 1) * cellSize);
 
-                    if (dotsGame.Grid[i, j].PlayerDot.Owner == DotsGame.Player.Player1)
+                    if (Game.Grid[i, j].PlayerDot.Owner == DotsGame.Player.Player1)
                     {
                         using (SolidBrush b = new SolidBrush(player1Color))
                         {
@@ -188,21 +188,19 @@ namespace Dots
 
             for (int playerIndex = 0; playerIndex < 2; playerIndex++)
             {
-                for (int i = 0; i < dotsGame.Contours[playerIndex].Count; i++)
+                for (int i = 0; i < Game.Contours[playerIndex].Count; i++)
                 {
-                    using (Pen p = new Pen(player1Color))
+                    using (Pen p = new Pen(playersColors[playerIndex]))
                     {
-                        using (SolidBrush b = new SolidBrush(Color.FromArgb(120, player1Color)))
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(80, playersColors[playerIndex])))
                         {
-                            var points = dotsGame.Contours[playerIndex][i].Dots.Select(x => new Point((x.Location.X + 1) * 20, (x.Location.Y + 1) * 20)).ToArray();
+                            var points = Game.Contours[playerIndex][i].Dots.Select(x => new Point((x.Cell.Location.X + 1) * 20, (x.Cell.Location.Y + 1) * 20)).ToArray();
                             pevent.Graphics.DrawPolygon(p, points);
                             pevent.Graphics.FillPolygon(b, points);
                         }
                     }
                 }
             }
-
-            Update();
         }
     }
 }

@@ -2,33 +2,25 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Drawing;
+using System.Collections;
 
 namespace Dots
 {
     public class DotsGame
     {
-        public DotsGame(GridSize size)
+        public DotsGame()
         {
-            Size = size;
-            Grid = new Cell[(int)Size, (int)Size];
+            Size = 25;
+            Grid = new Cell[Size, Size];
 
-            for (int i = 0; i < (int)Size; i++)
+            for (int i = 0; i < Size; i++)
             {
-                for (int j = 0; j < (int)Size; j++)
+                for (int j = 0; j < Size; j++)
                 {
-                    Grid[i, j] = new Cell();
+                    Grid[i, j] = new Cell(new Point(i, j));
                 }
             }
-        }
-
-
-        public enum GridSize
-        {
-            Small = 15,
-            Medium = 25,
-            Large = 35
         }
 
         public enum Player
@@ -40,13 +32,14 @@ namespace Dots
 
         public readonly Cell [,] Grid;
 
-        public GridSize Size { get; }
+        public int Size { get; }
 
 
         public class Cell
         {
-            public Cell()
+            public Cell(Point coordinates)
             {
+                Location = coordinates;
                 PlayerDot = null;
                 Surrounded = false;
                 Empty = true;
@@ -55,29 +48,28 @@ namespace Dots
             public Dot PlayerDot;
             public bool Surrounded;
             public bool Empty;
+            public Point Location;
         }
 
         public class Dot
         {
-            public Dot(Point coordinates, Player owner)
+            public Dot(Cell cell, Player owner)
             {
-                Location = coordinates;
+                Cell = cell;
                 Neighbors = new List<Dot>();
-                ParentSpline = null;
+                ParentCluster = null;
                 Owner = owner;
-                Index = 0;
             }
 
-            public Point Location { get; }
+            public Cell Cell { get; }
             public Player Owner { get; }
             public List<Dot> Neighbors;
-            public Spline ParentSpline;
-            public int Index;
+            public Cluster ParentCluster;
         }
 
-        public class Spline
+        public class Cluster
         {
-            public Spline(Dot dot)
+            public Cluster(Dot dot)
             {
                 Dots = new List<Dot> { dot };
                 ID = ++instanceCounter;
@@ -100,76 +92,310 @@ namespace Dots
         }
 
 
-        public List<Spline>[] Splines = { new List<Spline>(), new List<Spline>() };
+        public class Wave
+        {
+            public Wave(Dot start)
+            {
+                wave = new Queue<Dot>();
+                Start = start;
+                wave.Enqueue(start);
+                cameFrom = new Dictionary<Dot, Dot>();
+                cameFrom.Add(start, null);
+            }
+
+            private Queue<Dot> wave;
+            private Dictionary<Dot, Dot> cameFrom;
+            public readonly Dot Start;
+
+            public List<Dot> GetShortestPath(Dot destination)
+            {
+                var path = new List<Dot>();
+                Dot previous = null, current = null;
+
+                while (wave.Count != 0)
+                {
+                    current = wave.Peek();
+                    wave.Dequeue();
+
+                    if (current == destination)
+                        break;
+
+                    foreach (Dot next in current.Neighbors)
+                    {
+                        if (next == previous)
+                            continue;
+
+                        if (!cameFrom.ContainsKey(next))
+                        {
+                            wave.Enqueue(next);
+                            cameFrom.Add(next, current);
+                        }
+                    }
+
+                    previous = current;
+                }
+
+                current = destination;
+
+                while (current != Start)
+                {
+                    path.Add(current);
+                    current = cameFrom[current];
+                }
+
+                path.Add(Start);
+
+                return path;
+            }
+        }
+
+
+        public List<Cluster>[] Clusters = { new List<Cluster>(), new List<Cluster>() };
         public List<Contour>[] Contours = { new List<Contour>(), new List<Contour>() };
+
+
+        public int[] Score = { 0, 0 };
+
 
         public void AddDot(Player player, Point location)
         {
-            location = new Point(location.X.Clamp(0, (int)Size - 1), location.Y.Clamp(0, (int)Size - 1));
-            var newDot = new Dot(location, player);
-            Grid[location.X, location.Y].PlayerDot = newDot;
+            location = new Point(location.X.Clamp(0, Size - 1), location.Y.Clamp(0, Size - 1));
+            var cell = Grid[location.X, location.Y];
+            var newDot = new Dot(cell, player);
+            cell.PlayerDot = newDot;
+            Grid[location.X, location.Y].Empty = false;
 
-            List<Point> adjacentPoints = new List<Point>()
-            {
-                new Point(location.X - 1, location.Y - 1),
-                new Point(location.X,     location.Y - 1),
-                new Point(location.X + 1, location.Y - 1),
-                new Point(location.X - 1, location.Y),
-                new Point(location.X + 1, location.Y),
-                new Point(location.X - 1, location.Y + 1),
-                new Point(location.X,     location.Y + 1),
-                new Point(location.X + 1, location.Y + 1)
-            };
+            List<Point> adjacentPoints = Get8AdjacentPoints(location);
 
             List<Dot> neighbors = new List<Dot>();
-            for (int i = 0; i < adjacentPoints.Count && adjacentPoints[i].X >= 0 && adjacentPoints[i].X < (int)Size &&
-                                                        adjacentPoints[i].Y >= 0 && adjacentPoints[i].Y < (int)Size; i++)
+            for (int i = 0; i < adjacentPoints.Count; i++)
             {
-                if (!Grid[adjacentPoints[i].X, adjacentPoints[i].Y].Empty &&
-                    Grid[adjacentPoints[i].X, adjacentPoints[i].Y].PlayerDot.Owner == Player.Player1)
+                if (adjacentPoints[i].X >= 0 && adjacentPoints[i].X < Size &&
+                    adjacentPoints[i].Y >= 0 && adjacentPoints[i].Y < Size)
                 {
-                    neighbors.Add(Grid[adjacentPoints[i].X, adjacentPoints[i].Y].PlayerDot);
+                    var neighborCell = Grid[adjacentPoints[i].X, adjacentPoints[i].Y];
+
+                    if (!neighborCell.Empty && !neighborCell.Surrounded && neighborCell.PlayerDot.Owner == player)
+                    {
+                        neighbors.Add(neighborCell.PlayerDot);
+                    }
                 }
             }
-
-            newDot.Neighbors = neighbors;
 
             if (neighbors.Count == 0)
             {
-                var spline = new Spline(newDot);
-                Splines[(int)player].Add(spline);
-                newDot.ParentSpline = spline;
+                var Cluster = new Cluster(newDot);
+                Clusters[(int)player].Add(Cluster);
+                newDot.ParentCluster = Cluster;
             }
             else if (neighbors.Count == 1)
             {
-                neighbors[0].ParentSpline.Dots.Add(newDot);
-                newDot.ParentSpline = neighbors[0].ParentSpline;
-                newDot.Index = neighbors[0].Index + 1;
-            }
-            else if (neighbors.Count == 2)
-            {
-                if (neighbors[0].ParentSpline.ID == neighbors[1].ParentSpline.ID)
-                {
-                    neighbors[0].ParentSpline.Dots.Add(newDot);
-                    newDot.ParentSpline = neighbors[0].ParentSpline;
-                    newDot.Index = Math.Max(neighbors[0].Index + 1, neighbors[1].Index + 1);
-
-                    List<Dot> contour = new List<Dot>();
-
-                    //
-                    // finding the contour in newDot.ParentSpline
-                    //
-
-                }
-                else
-                {
-
-                }
+                neighbors[0].ParentCluster.Dots.Add(newDot);
+                newDot.ParentCluster = neighbors[0].ParentCluster;
             }
             else
             {
+                Dictionary<Cluster, List<Dot>> neighborClusters = new Dictionary<Cluster, List<Dot>>();
+                Cluster superCluster = null;
 
+                foreach (Dot neighbor in neighbors)
+                {
+                    if (neighborClusters.ContainsKey(neighbor.ParentCluster))
+                    {
+                        neighborClusters[neighbor.ParentCluster].Add(neighbor);
+                    }
+                    else
+                    {
+                        neighborClusters.Add(neighbor.ParentCluster, new List<Dot>() { neighbor });
+                        if (superCluster == null)
+                            superCluster = neighbor.ParentCluster;
+                    }
+                }
+
+                foreach (Cluster cluster in neighborClusters.Keys)
+                {
+                    var clusterDots = neighborClusters[cluster];
+
+                    if (clusterDots.Count > 1)
+                    {
+                        for (int i = 0; i < clusterDots.Count - 1; i++)
+                        {
+                            if (clusterDots[i].Neighbors.Contains(clusterDots[i + 1]))
+                                continue;
+
+                            var path = new Wave(clusterDots[i]).GetShortestPath(clusterDots[i + 1]);
+                            path.Add(newDot);
+
+                            var contour = new Contour(path);
+                            var surroundedCells = SurroundCells(contour, player);
+
+                            if (surroundedCells.Count > 0)
+                                Contours[(int)player].Add(contour);
+                        }
+                    }
+
+                    if (cluster != superCluster)
+                    {
+                        foreach (Dot dot in cluster.Dots)
+                        {
+                            dot.ParentCluster = superCluster;
+                            superCluster.Dots.Add(dot);
+                        }
+
+                        Clusters[(int)player].Remove(cluster);
+                    }
+                }
+
+                newDot.ParentCluster = superCluster;
+                superCluster.Dots.Add(newDot);
             }
+
+            newDot.Neighbors = neighbors;
+            foreach (Dot neighbor in neighbors)
+                neighbor.Neighbors.Add(newDot);
+        }
+
+        private List<Cell> SurroundCells(Contour contour, Player player)
+        {
+            var surroundedCells = new List<Cell>();
+            var adjacentPoints = Get8AdjacentPoints(contour.Dots[0].Cell.Location);
+            Cell startPoint = null;
+
+            foreach (Point point in adjacentPoints)
+            {
+                if (IsInsideContour(contour, point))
+                {
+                    startPoint = Grid[point.X, point.Y];
+                    surroundedCells.Add(startPoint);
+                    break;
+                }
+            }
+
+            if (startPoint != null)
+            {
+                Queue<Cell> flood = new Queue<Cell>();
+                Cell previous = null, current = null;
+                List<Point> contourPoints = contour.Dots.Select(x => x.Cell.Location).ToList();
+                List<Cell> opponentDots = new List<Cell>();
+                List<Cell> playerDots = new List<Cell>();
+
+                flood.Enqueue(startPoint);
+
+                while (flood.Count != 0)
+                {
+                    current = flood.Peek();
+                    flood.Dequeue();
+
+                    adjacentPoints = Get4AdjacentPoints(current.Location);
+
+                    foreach (Point next in adjacentPoints)
+                    {
+                        if (next.X >= 0 && next.X < Size &&
+                            next.Y >= 0 && next.Y < Size)
+                        {
+                            Cell nextCell = Grid[next.X, next.Y];
+
+                            if (nextCell == previous)
+                                continue;
+
+                            if (nextCell != previous && !surroundedCells.Contains(nextCell) && !contourPoints.Contains(next))
+                            {
+                                flood.Enqueue(nextCell);
+                                surroundedCells.Add(nextCell);
+                            }
+                        }
+                    }
+
+                    previous = current;
+                }
+
+                foreach (Cell cell in surroundedCells)
+                {
+                    if (!cell.Empty)
+                    {
+                        if (cell.PlayerDot.Owner == player)
+                        {
+                            playerDots.Add(cell);
+
+                            if (cell.Surrounded)
+                            {
+                                cell.Surrounded = false;
+                                Score[1 - (int)player]--;
+                            }
+                        }
+                        else
+                        {
+                            opponentDots.Add(cell);
+                            
+                            if (!cell.Surrounded)
+                            {
+                                cell.Surrounded = true;
+                                Score[(int)player]++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return surroundedCells;
+        }
+
+        private bool IsInsideContour(Contour contour, Point point)
+        {
+            if (contour.Dots.Exists(d => d.Cell.Location == point))
+                return false;
+
+            int corners = contour.Dots.Count;
+            int i, j =  corners - 1;
+            int x = point.X, y = point.Y;
+            bool inside = false;
+            int[] xCoord = contour.Dots.Select(t => t.Cell.Location.X).ToArray();
+            int[] yCoord = contour.Dots.Select(t => t.Cell.Location.Y).ToArray();
+
+            for (i = 0; i < corners; i++)
+            {
+                if (yCoord[i] < y && yCoord[j] >= y || yCoord[j] < y && yCoord[i] >= y)
+                {
+                    if (xCoord[i] + (y - yCoord[i]) / (yCoord[j] - yCoord[i]) * (xCoord[j] - xCoord[i]) < x)
+                    {
+                        inside = !inside;
+                    }
+                }
+
+                j = i;
+            }
+
+            return inside;
+        }
+
+        private List<Point> Get8AdjacentPoints(Point point)
+        {
+            List<Point> adjacentPoints = new List<Point>()
+            {
+                new Point(point.X - 1, point.Y - 1),
+                new Point(point.X,     point.Y - 1),
+                new Point(point.X + 1, point.Y - 1),
+                new Point(point.X + 1, point.Y),
+                new Point(point.X + 1, point.Y + 1),
+                new Point(point.X,     point.Y + 1),
+                new Point(point.X - 1, point.Y + 1),
+                new Point(point.X - 1, point.Y)
+            };
+
+            return adjacentPoints;
+        }
+
+        private List<Point> Get4AdjacentPoints(Point point)
+        {
+            List<Point> adjacentPoints = new List<Point>()
+            {
+                new Point(point.X,     point.Y - 1),
+                new Point(point.X + 1, point.Y),
+                new Point(point.X,     point.Y + 1),
+                new Point(point.X - 1, point.Y)
+            };
+
+            return adjacentPoints;
         }
     }
 }
