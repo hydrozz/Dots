@@ -22,6 +22,7 @@ namespace Dots
                 Location = new Point(0, 0),
                 Name = "Field",
                 Size = new Size(520, 520),
+                Dock = DockStyle.Top
             };
             Field.MouseClick += new MouseEventHandler(Field_MouseClick);
 
