@@ -41,7 +41,7 @@ namespace Dots
         {
             Point coords = Field.NearestCell;
 
-            if (dots.Grid[coords.X, coords.Y].PlayerDot == null)
+            if (dots.Grid[coords.X, coords.Y].Empty && !dots.Grid[coords.X, coords.Y].Surrounded)
             {
                 dots.AddDot(Turn, coords);
 

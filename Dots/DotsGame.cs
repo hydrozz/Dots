@@ -122,10 +122,7 @@ namespace Dots
 
                     foreach (Dot next in current.Neighbors)
                     {
-                        if (next == previous)
-                            continue;
-
-                        if (!cameFrom.ContainsKey(next))
+                        if (next != previous && !next.Cell.Surrounded && !cameFrom.ContainsKey(next))
                         {
                             wave.Enqueue(next);
                             cameFrom.Add(next, current);
@@ -135,7 +132,8 @@ namespace Dots
                     previous = current;
                 }
 
-                current = destination;
+                if (current != destination)
+                    return null;
 
                 while (current != Start)
                 {
@@ -224,6 +222,10 @@ namespace Dots
                                 continue;
 
                             var path = new Wave(clusterDots[i]).GetShortestPath(clusterDots[i + 1]);
+
+                            if (path == null)
+                                continue;
+
                             path.Add(newDot);
 
                             var contour = new Contour(path);
@@ -333,6 +335,10 @@ namespace Dots
                                 Score[(int)player]++;
                             }
                         }
+                    }
+                    else
+                    {
+                        cell.Surrounded = true;
                     }
                 }
             }

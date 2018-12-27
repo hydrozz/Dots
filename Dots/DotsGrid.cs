@@ -152,7 +152,7 @@ namespace Dots
                 }
             }
 
-            if (mouseOver && nearestPoint.X >= 0 && NearestCell.X >= 0 && Game.Grid[NearestCell.X, NearestCell.Y].PlayerDot == null)
+            if (mouseOver && nearestPoint.X >= 0 && NearestCell.X >= 0 && Game.Grid[NearestCell.X, NearestCell.Y].Empty && !Game.Grid[NearestCell.X, NearestCell.Y].Surrounded)
             {
                 using (Pen p = new Pen(selectionColor))
                 {
