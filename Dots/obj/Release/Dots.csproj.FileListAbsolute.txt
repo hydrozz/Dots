@@ -1,0 +1,11 @@
+C:\Users\Roman\source\repos\Dots\Dots\bin\Release\Dots.exe.config
+C:\Users\Roman\source\repos\Dots\Dots\bin\Release\Dots.exe
+C:\Users\Roman\source\repos\Dots\Dots\bin\Release\Dots.pdb
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.csprojAssemblyReference.cache
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.DotsGrid.resources
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.FieldForm.resources
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.Properties.Resources.resources
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.csproj.GenerateResource.cache
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.csproj.CoreCompileInputs.cache
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.exe
+C:\Users\Roman\source\repos\Dots\Dots\obj\Release\Dots.pdb
